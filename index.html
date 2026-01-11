@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#667eea">
+    
+    <!-- SEO Meta Tags -->
+    <title>Тапалка - Кликер-игра в Telegram | Telegram Mini App</title>
+    <meta name="description" content="Увлекательная кликер-игра с реферальной системой в Telegram. Зарабатывайте монеты, покупайте улучшения, приглашайте друзей и получайте бонусы!">
+    <meta name="keywords" content="тапалка, кликер, игра, telegram, мини-приложение, реферальная система, играть, монеты">
+    <meta name="author" content="Тапалка">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://your-domain.com/">
+    <meta property="og:title" content="Тапалка - Кликер-игра в Telegram">
+    <meta property="og:description" content="Увлекательная кликер-игра с реферальной системой. Зарабатывайте монеты и приглашайте друзей!">
+    <meta property="og:image" content="https://your-domain.com/icon-512x512.png">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://your-domain.com/">
+    <meta property="twitter:title" content="Тапалка - Кликер-игра в Telegram">
+    <meta property="twitter:description" content="Увлекательная кликер-игра с реферальной системой">
+    <meta property="twitter:image" content="https://your-domain.com/icon-512x512.png">
+    
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Тапалка">
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Яндекс.Метрика (замените YOUR_COUNTER_ID на реальный ID) -->
+    <!-- <script type="text/javascript">
+       (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+       m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+       (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+       ym(YOUR_COUNTER_ID, "init", {
+            clickmap:true,
+            trackLinks:true,
+            accurateTrackBounce:true,
+            webvisor:true
+       });
+    </script>
+    <noscript><div><img src="https://mc.yandex.ru/watch/YOUR_COUNTER_ID" style="position:absolute; left:-9999px;" alt="" /></div></noscript> -->
+    
+    <!-- Google Analytics (замените YOUR_GA_ID на реальный ID) -->
+    <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=YOUR_GA_ID"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'YOUR_GA_ID');
+    </script> -->
+    
+    <!-- Стили -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2 class="loading-title">Загрузка игры...</h2>
+            <p class="loading-text" id="loadingText">Инициализация...</p>
+        </div>
+    </div>
+    
+    <!-- Error Overlay -->
+    <div class="error-overlay" id="errorOverlay" style="display: none;">
+        <div class="error-modal">
+            <div class="error-icon">⚠️</div>
+            <h3 class="error-title" id="errorTitle">Ошибка</h3>
+            <p class="error-message" id="errorMessage"></p>
+            <button class="error-btn" id="errorCloseBtn">Закрыть</button>
+        </div>
+    </div>
+    
+    <!-- Notification Toast -->
+    <div class="notification-toast" id="notificationToast"></div>
+    
+    <div class="app-container" id="appContainer" style="opacity: 0;">
+        <!-- Шапка с названием игры -->
+        <header class="header">
+            <h1 class="title" id="gameTitle">🎮 Тапалка</h1>
+            <button class="menu-btn" id="menuBtn" aria-label="Открыть меню">☰</button>
+        </header>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <!-- Секция информации о пользователе -->
+            <section class="user-section" id="userSection">
+                <div class="user-card">
+                    <div class="user-avatar" id="userAvatar">
+                        <span id="avatarIcon">👤</span>
+                    </div>
+                    <div class="user-info">
+                        <h2 class="user-name" id="userName">Игрок</h2>
+                        <p class="user-id" id="userId">ID: ---</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Основная игровая зона -->
+            <section class="game-zone">
+                <!-- Крупный счетчик монет -->
+                <div class="coins-display-container">
+                    <div class="coins-label">Монеты</div>
+                    <div class="coins-value" id="coinsDisplay">0</div>
+                </div>
+
+                <!-- Большая кнопка для тапов -->
+                <div class="tap-area">
+                    <button class="tap-button" id="tapButton" aria-label="Тапнуть">
+                        <span class="tap-icon">👆</span>
+                        <span class="tap-text">ТАПАЙ!</span>
+                    </button>
+                    <div class="tap-counter" id="tapCounter">+1</div>
+                </div>
+
+                <!-- Статистика -->
+                <div class="game-stats" id="gameStats">
+                    <div class="stat-item">
+                        <span class="stat-label">Тапов:</span>
+                        <span class="stat-value" id="totalTapsDisplay">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Монет за клик:</span>
+                        <span class="stat-value" id="coinsPerClickDisplay">1</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Кликов/сек:</span>
+                        <span class="stat-value" id="clicksPerSecondDisplay">0</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Секция рефералов -->
+            <section class="referral-section" id="referralSection">
+                <h2 class="section-title">Пригласи друзей</h2>
+                <div class="referral-card">
+                    <p class="referral-description">Приглашай друзей и получай бонусы!</p>
+                    
+                    <div class="referral-link-container">
+                        <input 
+                            type="text" 
+                            class="referral-link-input" 
+                            id="referralLink" 
+                            readonly
+                            aria-label="Реферальная ссылка"
+                        >
+                    </div>
+                    
+                    <div class="referral-actions">
+                        <button class="copy-referral-btn" id="copyReferralBtn" aria-label="Скопировать реферальную ссылку">
+                            <span class="copy-icon">📋</span>
+                            <span class="copy-text">Скопировать реферальную ссылку</span>
+                        </button>
+                        <button class="referral-stats-btn" id="showReferralStats" aria-label="Детальная статистика">
+                            <span class="stats-icon">📊</span>
+                            <span class="stats-text">Статистика</span>
+                        </button>
+                    </div>
+                    
+                    <div class="referral-stats-container">
+                        <div class="referral-stat-item">
+                            <span class="referral-stat-label">Приглашено друзей:</span>
+                            <span class="referral-stat-value" id="referralsCount">0</span>
+                        </div>
+                        <div class="referral-stat-item">
+                            <span class="referral-stat-label">Реферальный бонус:</span>
+                            <span class="referral-stat-value" id="referralBonus">0%</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Информация о реферере (если пользователь был приглашен) -->
+                    <div class="referred-by-info" id="referredByInfo" style="display: none;">
+                        <p class="referred-by-text">
+                            <span class="info-icon">🎁</span>
+                            <span id="referredByDisplay">Приглашен пользователем</span>
+                        </p>
+                    </div>
+                    
+                    <!-- История рефералов -->
+                    <div class="referral-history-container">
+                        <h3 class="history-title">История приглашенных друзей</h3>
+                        <div class="referral-history" id="referralHistory">
+                            <p class="no-referrals">Пока нет приглашенных друзей</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Информация о бонусах -->
+                    <div class="referral-bonus-info">
+                        <p class="bonus-info-text">
+                            💡 <strong>Как это работает:</strong><br>
+                            Каждый приглашенный друг дает вам <strong>+1%</strong> к доходу от тапов. 
+                            Максимальный бонус не ограничен!
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Секция улучшений -->
+            <section class="upgrades-section" id="upgradesSection">
+                <h2 class="section-title">Улучшения</h2>
+                <div class="upgrades-grid" id="upgradesContainer">
+                    <!-- Улучшения будут отрисованы динамически через JavaScript -->
+                </div>
+            </section>
+            
+            <!-- Секция ежедневного бонуса -->
+            <section class="daily-bonus-section" id="dailyBonusSection" style="display: none;">
+                <h2 class="section-title">🎁 Ежедневный бонус</h2>
+                <div class="daily-bonus-card">
+                    <div class="bonus-timer" id="bonusTimer">Следующий бонус через: <span id="timerValue">--:--</span></div>
+                    <button class="claim-bonus-btn" id="claimBonusBtn" disabled>
+                        <span class="bonus-icon">🎁</span>
+                        <span class="bonus-text">Забрать бонус</span>
+                    </button>
+                    <div class="bonus-streak">
+                        <span class="streak-label">Серия дней:</span>
+                        <span class="streak-value" id="streakValue">0</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Боковое меню -->
+        <aside class="side-menu" id="sideMenu" aria-hidden="true">
+            <div class="menu-header">
+                <h2 class="menu-title">Меню</h2>
+                <button class="close-menu-btn" id="closeMenuBtn" aria-label="Закрыть меню">×</button>
+            </div>
+            <nav class="menu-nav" id="menuNav">
+                <button class="menu-item" id="statsMenuItem" aria-label="Статистика">
+                    <span class="menu-icon">📊</span>
+                    <span class="menu-text">Статистика</span>
+                </button>
+                <button class="menu-item" id="settingsMenuItem" aria-label="Настройки">
+                    <span class="menu-icon">⚙️</span>
+                    <span class="menu-text">Настройки</span>
+                </button>
+                <button class="menu-item" id="aboutMenuItem" aria-label="О игре">
+                    <span class="menu-icon">ℹ️</span>
+                    <span class="menu-text">О игре</span>
+                </button>
+                <button class="menu-item" id="achievementsMenuItem" aria-label="Достижения">
+                    <span class="menu-icon">🏆</span>
+                    <span class="menu-text">Достижения</span>
+                </button>
+                <button class="menu-item" id="dailyBonusMenuItem" aria-label="Ежедневный бонус">
+                    <span class="menu-icon">🎁</span>
+                    <span class="menu-text">Ежедневный бонус</span>
+                </button>
+                <button class="menu-item menu-item-danger" id="resetProgressMenuItem" aria-label="Сбросить прогресс">
+                    <span class="menu-icon">🗑️</span>
+                    <span class="menu-text">Сбросить прогресс</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Оверлей для меню -->
+        <div class="menu-overlay" id="menuOverlay" aria-hidden="true"></div>
+    </div>
+
+    <!-- Скрипты -->
+    <script src="firebase-config.js"></script>
+    <script src="script.js"></script>
+    
+    <!-- Регистрация Service Worker для PWA -->
+    <script>
+        // Service Worker регистрируется в script.js через registerServiceWorker()
+        // Дополнительная регистрация здесь для быстрой работы оффлайн
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker зарегистрирован:', registration.scope);
+                        
+                        // Проверка обновлений
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            if (newWorker) {
+                                newWorker.addEventListener('statechange', () => {
+                                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                        // Новый Service Worker доступен
+                                        if (window.showNotification && typeof showNotification === 'function') {
+                                            showNotification('🔄', 'Обновление доступно', 'Перезагрузите страницу для применения обновлений', 'info', 10000);
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    })
+                    .catch(err => {
+                        console.warn('⚠️ Service Worker не зарегистрирован:', err);
+                    });
+            });
+        }
+        
+        // Обработка ошибок загрузки
+        window.addEventListener('error', (event) => {
+            console.error('❌ Ошибка загрузки:', event.error);
+            // Показываем уведомление только для критических ошибок
+            if (event.error && event.error.message && event.error.message.includes('Failed to load')) {
+                if (window.showNotification && typeof showNotification === 'function') {
+                    showNotification('⚠️', 'Ошибка загрузки', 'Проверьте интернет-соединение', 'error', 5000);
+                }
+            }
+        });
+        
+        // Обработка необработанных промисов
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('❌ Необработанное отклонение промиса:', event.reason);
+            // Можно добавить отправку в систему мониторинга ошибок
+        });
+    </script>
+</body>
+</html>

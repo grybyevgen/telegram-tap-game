@@ -1,0 +1,24 @@
+{
+  "name": "tap-game",
+  "version": "1.0.0",
+  "description": "Telegram Mini App - Кликер-игра с реферальной системой",
+  "scripts": {
+    "minify": "node minify.js",
+    "build": "node build.js",
+    "deploy": "node build.js && echo 'Build complete, ready for deployment'"
+  },
+  "keywords": [
+    "telegram",
+    "miniapp",
+    "clicker",
+    "game",
+    "firebase",
+    "pwa"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "cssnano-cli": "^1.0.5",
+    "terser": "^5.26.0"
+  }
+}

@@ -1,0 +1,68 @@
+# Конфигурация Netlify для деплоя Telegram Mini App "Тапалка"
+
+[build]
+  # Папка с файлами для деплоя (корень проекта)
+  publish = "."
+  # Команда сборки (не требуется для статических файлов)
+  command = "echo 'No build step required'"
+
+[build.environment]
+  # Версия Node.js (если нужна для build процесса)
+  NODE_VERSION = "18"
+
+# Обработка перенаправлений для SPA
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Заголовки безопасности
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # Разрешаем встраивание в Telegram
+    X-Frame-Options = "ALLOW-FROM https://web.telegram.org"
+    Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://telegram.org"
+
+# Заголовки для статических ресурсов
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.jpg"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Заголовки для HTML (не кешировать)
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Заголовки для manifest
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+    Cache-Control = "public, max-age=3600"
