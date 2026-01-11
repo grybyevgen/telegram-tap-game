@@ -240,6 +240,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (e) {
                 gameState.userId = savedUserId;
             }
+            // Устанавливаем userId глобально для совместимости
+            window.userId = gameState.userId;
         }
         
         // Проверка онлайн/оффлайн статуса
@@ -668,11 +670,17 @@ function getUserDataFromTelegram() {
             hasAvatar: !!gameState.userAvatar
         });
         
+        // Устанавливаем userId глобально для совместимости
+        window.userId = gameState.userId;
+        
         // Генерация реферального кода на основе ID пользователя
         if (!gameState.referralCode) {
             gameState.referralCode = generateReferralCode(gameState.userId);
-            saveGameState();
         }
+        
+        // Сохраняем состояние и обновляем UI
+        saveGameState();
+        updateUI();
         
     } else {
         console.warn('⚠️ Пользователь не авторизован в Telegram');
@@ -703,6 +711,9 @@ function createTestUser() {
     
     gameState.userName = 'Тестовый игрок';
     
+    // Устанавливаем userId глобально для совместимости
+    window.userId = gameState.userId;
+    
     // Сохраняем userId в localStorage
     localStorage.setItem(STORAGE_KEYS.USER_ID, gameState.userId.toString());
     
@@ -713,6 +724,9 @@ function createTestUser() {
     
     // Сохраняем состояние
     saveGameState();
+    
+    // Обновляем UI
+    updateUI();
     
     console.log('✅ Тестовый пользователь создан:', {
         id: gameState.userId,
@@ -2019,6 +2033,16 @@ function updateReferralInfo() {
             referredByInfo.style.display = 'none';
         }
     }
+    
+    // Обновление реферальной ссылки
+    if (gameState.referralCode) {
+        const baseUrl = window.location.origin + window.location.pathname;
+        const referralLink = `${baseUrl}?ref=${gameState.referralCode}`;
+        const referralInput = document.getElementById('referralLink');
+        if (referralInput) {
+            referralInput.value = referralLink;
+        }
+    }
 }
 
 /* ============================================
@@ -2876,6 +2900,9 @@ function saveGameState() {
             referralsCount: gameState.referralsCount,
             referralBonus: gameState.referralBonus,
             referredBy: gameState.referredBy,
+            referralCode: gameState.referralCode,
+            userAvatar: gameState.userAvatar,
+            userName: gameState.userName,
             purchasedUpgrades: gameState.purchasedUpgrades || [],
             achievements: achievementsState.achievements || [],
             lastBonusDate: dailyBonusState.lastBonusDate,
@@ -2941,6 +2968,9 @@ function loadGameState() {
             gameState.referralsCount = parsedState.referralsCount || 0;
             gameState.referralBonus = parsedState.referralBonus || 0;
             gameState.referredBy = parsedState.referredBy || null;
+            gameState.referralCode = parsedState.referralCode || gameState.referralCode || null;
+            gameState.userAvatar = parsedState.userAvatar || gameState.userAvatar || null;
+            gameState.userName = parsedState.userName || gameState.userName || 'Игрок';
             gameState.purchasedUpgrades = parsedState.purchasedUpgrades || [];
             
             // Загрузка достижений
