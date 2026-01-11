@@ -230,30 +230,6 @@ console.log('WebApp:', window.Telegram?.WebApp);
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Инициализация игры...');
     
-    // Таймаут для гарантированного завершения загрузки (10 секунд)
-    const initTimeout = setTimeout(() => {
-        console.warn('⚠️ Инициализация заняла слишком много времени, принудительно скрываем загрузку');
-        try {
-            hideLoading();
-            // Показываем простое сообщение в консоли
-            console.error('❌ Инициализация не завершилась за отведенное время');
-        } catch (e) {
-            console.error('❌ Ошибка при принудительном скрытии загрузки:', e);
-            // Принудительно скрываем loading screen
-            const loadingScreen = document.getElementById('loadingScreen');
-            if (loadingScreen) {
-                loadingScreen.style.display = 'none';
-            }
-            const appContainer = document.getElementById('appContainer');
-            if (appContainer) {
-                appContainer.style.opacity = '1';
-            }
-        }
-    }, 10000);
-    
-    // Показываем loading screen
-    showLoading('Инициализация...');
-    
     try {
         // ВАЖНО: Устанавливаем userId в самом начале
         // Загружаем сохраненный userId из localStorage сначала
@@ -270,8 +246,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupOfflineDetection();
         
         // Инициализация Telegram Web App
-        updateLoadingText('Загрузка Telegram SDK...');
-        
         // Дополнительная проверка Telegram WebApp
         if (!window.Telegram?.WebApp) {
             console.warn('⚠️ Telegram WebApp недоступен при инициализации');
@@ -305,7 +279,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         // Инициализация Firebase (если доступен)
-        updateLoadingText('Подключение к Firebase...');
         try {
             await initFirebaseIfAvailable();
         } catch (error) {
@@ -313,11 +286,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         // Загрузка сохраненного прогресса
-        updateLoadingText('Загрузка прогресса...');
         loadGameState();
         
         // Обработка реферального кода из URL (до генерации своего кода)
-        updateLoadingText('Проверка реферальных ссылок...');
         try {
             await checkReferralFromURL();
         } catch (error) {
@@ -325,7 +296,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         // Генерация/загрузка реферального кода пользователя
-        updateLoadingText('Генерация реферального кода...');
         try {
             await ensureReferralCode();
         } catch (error) {
@@ -333,7 +303,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         // Загрузка данных из Firebase (если доступен)
-        updateLoadingText('Синхронизация данных...');
         try {
             await loadDataFromFirebase();
         } catch (error) {
@@ -341,7 +310,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         // Настройка обработчиков событий
-        updateLoadingText('Настройка интерфейса...');
         setupEventListeners();
         
         // Генерация реферальной ссылки
@@ -394,7 +362,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         // Обновление интерфейса
-        updateLoadingText('Финальная настройка...');
         try {
             updateUI();
         } catch (error) {
@@ -408,29 +375,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.warn('⚠️ Ошибка загрузки истории рефералов (продолжаем работу):', error);
         }
         
-        // Отменяем таймаут, так как инициализация завершена успешно
-        clearTimeout(initTimeout);
-        
-        // Скрываем loading screen
-        setTimeout(() => {
-            hideLoading();
-            // Показываем приветственное уведомление (только первый раз)
-            try {
-                showWelcomeNotification();
-            } catch (error) {
-                console.warn('⚠️ Ошибка показа приветственного уведомления:', error);
-            }
-        }, 500);
+        // Показываем приветственное уведомление (только первый раз)
+        try {
+            showWelcomeNotification();
+        } catch (error) {
+            console.warn('⚠️ Ошибка показа приветственного уведомления:', error);
+        }
         
         console.log('✅ Игра успешно инициализирована');
         console.log('📊 Текущее состояние:', gameState);
     } catch (error) {
-        // Отменяем таймаут при ошибке
-        clearTimeout(initTimeout);
-        
         console.error('❌ Ошибка инициализации:', error);
         console.error('❌ Стек ошибки:', error.stack);
-        hideLoading();
         
         // Показываем ошибку, но не блокируем игру полностью
         try {
