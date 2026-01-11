@@ -50,14 +50,14 @@ function getFirebaseConfig() {
     }
     
     // Вариант 2: Прямая конфигурация (для простых HTML страниц)
-    // Замените значения на свои из Firebase Console
+    // Конфигурация Firebase проекта "telegram-tap-game"
     return {
-        apiKey: "YOUR_API_KEY_HERE",
-        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT_ID.appspot.com",
-        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-        appId: "YOUR_APP_ID"
+        apiKey: "AIzaSyDYyWdGffEjjuoqI-L-5oh8yS9fyNjnHgo",
+        authDomain: "telegram-tap-game.firebaseapp.com",
+        projectId: "telegram-tap-game",
+        storageBucket: "telegram-tap-game.firebasestorage.app",
+        messagingSenderId: "692574097484",
+        appId: "1:692574097484:web:3555b00f0e9b17da2ca4e9"
     };
 }
 

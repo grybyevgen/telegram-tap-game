@@ -904,7 +904,9 @@ async function checkReferralFromURL() {
    Обработка тапа
    ============================================ */
 async function handleTap(event) {
-    event.preventDefault();
+    if (event) {
+        event.preventDefault();
+    }
     
     console.log('👆 Тап зарегистрирован');
     
@@ -913,8 +915,10 @@ async function handleTap(event) {
         await processReferralBonus();
     }
     
-    // Увеличение счетчика монет
+    // Расчет монет за тап (учитывает улучшения и бонусы)
     const coinsEarned = calculateCoinsPerTap();
+    
+    // Обновляем локальное состояние
     gameState.coins += coinsEarned;
     gameState.totalTaps++;
     
@@ -926,23 +930,53 @@ async function handleTap(event) {
     console.log(`💰 Получено монет: ${coinsEarned}, Всего: ${gameState.coins}`);
     console.log(`📊 Всего тапов: ${gameState.totalTaps}`);
     
-        // Проверка достижений после тапа
-        checkAchievements();
-        
-        // Обновление интерфейса
-        updateUI();
-        
-        // Визуальная обратная связь
+    // Обновляем UI
+    updateUI();
+    
+    // Визуальная обратная связь
+    if (event) {
         showTapFeedback(event, coinsEarned);
         
         // Тактильная обратная связь (вибрация в Telegram)
         if (tg && tg.HapticFeedback) {
             tg.HapticFeedback.impactOccurred('light');
         }
-        
-        // Автосохранение (с задержкой для оптимизации)
-        debounceSave();
     }
+    
+    // Сохраняем в Firebase
+    const userId = window.userId || gameState.userId;
+    if (userId && !userId.toString().startsWith('local_')) {
+        try {
+            await updateCoins(userId, coinsEarned);
+        } catch (error) {
+            console.error('❌ Ошибка обновления монет в Firebase:', error);
+        }
+    }
+    
+    // Резервное сохранение в localStorage
+    try {
+        const stateToSave = {
+            coins: gameState.coins,
+            totalTaps: gameState.totalTaps,
+            coinsPerClick: gameState.coinsPerClick,
+            clicksPerSecond: gameState.clicksPerSecond,
+            referralsCount: gameState.referralsCount,
+            referralBonus: gameState.referralBonus,
+            referredBy: gameState.referredBy,
+            purchasedUpgrades: gameState.purchasedUpgrades || [],
+            timestamp: Date.now()
+        };
+        localStorage.setItem('tapGameState', JSON.stringify(stateToSave));
+    } catch (error) {
+        console.error('❌ Ошибка сохранения в localStorage:', error);
+    }
+    
+    // Проверка достижений после тапа
+    checkAchievements();
+    
+    // Автосохранение (с задержкой для оптимизации)
+    debounceSave();
+}
 
 /* ============================================
    Обработка реферального бонуса при первом тапе
@@ -1470,6 +1504,255 @@ async function initFirebaseIfAvailable() {
         console.log('ℹ️ Firebase Service не загружен, работаем только с localStorage');
         appSettings.offlineMode = true;
     }
+}
+
+/* ============================================
+   FIREBASE ФУНКЦИИ
+   ============================================ */
+
+// Сохранение данных пользователя
+async function saveUserData(userId, data) {
+    try {
+        if (!window.firebaseDb || !window.FirebaseService || !window.FirebaseService.isInitialized()) {
+            console.warn('⚠️ Firebase не инициализирован, сохранение в localStorage');
+            localStorage.setItem(`user_${userId}`, JSON.stringify(data));
+            return;
+        }
+
+        // Используем Firebase v9+ модули
+        const { doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        const userRef = doc(window.firebaseDb, 'users', userId.toString());
+        
+        await setDoc(userRef, {
+            ...data,
+            lastUpdated: serverTimestamp()
+        }, { merge: true });
+        
+        console.log('✅ Данные сохранены в Firebase');
+    } catch (error) {
+        console.error('❌ Ошибка сохранения:', error);
+        // Резервное сохранение в localStorage
+        localStorage.setItem(`user_${userId}`, JSON.stringify(data));
+    }
+}
+
+// Загрузка данных пользователя
+async function loadUserData(userId) {
+    try {
+        if (!window.firebaseDb || !window.FirebaseService || !window.FirebaseService.isInitialized()) {
+            console.warn('⚠️ Firebase не инициализирован, загрузка из localStorage');
+            const localData = localStorage.getItem(`user_${userId}`);
+            return localData ? JSON.parse(localData) : null;
+        }
+
+        // Используем Firebase v9+ модули
+        const { doc, getDoc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        const userRef = doc(window.firebaseDb, 'users', userId.toString());
+        const userSnap = await getDoc(userRef);
+        
+        if (userSnap.exists()) {
+            console.log('✅ Данные загружены из Firebase');
+            return userSnap.data();
+        } else {
+            // Создаём нового пользователя
+            const newUser = {
+                coins: 0,
+                taps: 0,
+                perClick: 1,
+                referrals: [],
+                referralsCount: 0,
+                createdAt: serverTimestamp()
+            };
+            await setDoc(userRef, newUser, { merge: true });
+            return newUser;
+        }
+    } catch (error) {
+        console.error('❌ Ошибка загрузки:', error);
+        // Загружаем из localStorage
+        const localData = localStorage.getItem(`user_${userId}`);
+        return localData ? JSON.parse(localData) : null;
+    }
+}
+
+// Обновление монет
+async function updateCoins(userId, coinsToAdd) {
+    try {
+        if (!window.firebaseDb || !window.FirebaseService || !window.FirebaseService.isInitialized()) {
+            console.warn('⚠️ Firebase не инициализирован');
+            return;
+        }
+
+        // Используем Firebase v9+ модули
+        const { doc, updateDoc, increment, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        const userRef = doc(window.firebaseDb, 'users', userId.toString());
+        
+        await updateDoc(userRef, {
+            coins: increment(coinsToAdd),
+            taps: increment(1),
+            lastTap: serverTimestamp()
+        });
+        
+        console.log('✅ Монеты обновлены');
+    } catch (error) {
+        console.error('❌ Ошибка обновления монет:', error);
+    }
+}
+
+// Реферальная система
+async function handleReferral(referrerId, referredId) {
+    try {
+        if (!window.firebaseDb || !window.FirebaseService || !window.FirebaseService.isInitialized()) {
+            console.warn('⚠️ Firebase не инициализирован');
+            return;
+        }
+
+        // Используем Firebase v9+ модули
+        const { doc, updateDoc, increment, arrayUnion, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        
+        const referrerRef = doc(window.firebaseDb, 'users', referrerId.toString());
+        
+        // Добавляем реферала в массив и увеличиваем счётчик
+        await updateDoc(referrerRef, {
+            referrals: arrayUnion(referredId.toString()),
+            referralsCount: increment(1),
+            coins: increment(50), // Бонус за реферала
+            lastUpdated: serverTimestamp()
+        });
+        
+        console.log(`✅ Реферал ${referredId} добавлен к ${referrerId}`);
+        
+        // Также даём бонус новому пользователю
+        const referredRef = doc(window.firebaseDb, 'users', referredId.toString());
+        await updateDoc(referredRef, {
+            coins: increment(25),
+            lastUpdated: serverTimestamp()
+        });
+        
+    } catch (error) {
+        console.error('❌ Ошибка реферальной системы:', error);
+    }
+}
+
+// Функция проверки рефералов
+async function checkReferral(userId) {
+    try {
+        // Проверяем URL параметры
+        const urlParams = new URLSearchParams(window.location.search);
+        const refParam = urlParams.get('ref') || urlParams.get('startapp');
+        
+        if (refParam && refParam.startsWith('ref_')) {
+            const referrerId = refParam.replace('ref_', '');
+            
+            // Проверяем, чтобы пользователь не пригласил сам себя
+            if (referrerId !== userId.toString()) {
+                // Проверяем, первый ли раз пользователь
+                if (!window.firebaseDb || !window.FirebaseService || !window.FirebaseService.isInitialized()) {
+                    console.warn('⚠️ Firebase не инициализирован, пропускаем проверку рефералов');
+                    return;
+                }
+                
+                // Используем Firebase v9+ модули
+                const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                const userRef = doc(window.firebaseDb, 'users', userId.toString());
+                const userDoc = await getDoc(userRef);
+                
+                if (!userDoc.exists()) {
+                    // Новый пользователь - начисляем бонус рефереру
+                    await handleReferral(referrerId, userId);
+                    
+                    // Показываем сообщение
+                    if (tg && tg.showAlert) {
+                        tg.showAlert('🎉 Вы получили 25 монет за переход по реферальной ссылке!');
+                    } else {
+                        alert('🎉 Вы получили 25 монет за переход по реферальной ссылке!');
+                    }
+                    
+                    console.log('✅ Реферальная проверка завершена, бонус начислен');
+                } else {
+                    console.log('ℹ️ Пользователь уже существует, реферальный бонус не начислен');
+                }
+            } else {
+                console.log('ℹ️ Пользователь пытается использовать собственную реферальную ссылку');
+            }
+        } else {
+            console.log('ℹ️ Реферальный параметр не найден или неверный формат');
+        }
+    } catch (error) {
+        console.error('❌ Ошибка проверки рефералов:', error);
+    }
+}
+
+/* ============================================
+   Обновлённая функция инициализации
+   ============================================ */
+async function initApp() {
+    console.log('🚀 Инициализация приложения...');
+    
+    // Получаем userId
+    let userId;
+    if (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
+        // В Telegram
+        const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
+        userId = tgUser.id;
+        gameState.userId = userId;
+        gameState.userName = tgUser.first_name || 'Игрок';
+        
+        if (tgUser.last_name) {
+            gameState.userName += ' ' + tgUser.last_name;
+        }
+        
+        if (tgUser.username) {
+            gameState.userName = '@' + tgUser.username;
+        }
+        
+        // Обновляем имя пользователя в UI
+        const userNameElement = document.getElementById('userName');
+        if (userNameElement) {
+            userNameElement.textContent = `👤 ${gameState.userName}`;
+        }
+        
+        // Проверяем реферальную ссылку
+        await checkReferralFromURL();
+    } else {
+        // Локальный режим
+        userId = 'local_' + Math.random().toString(36).substring(2, 11);
+        gameState.userId = userId;
+        gameState.userName = 'Тестовый режим';
+        
+        const userNameElement = document.getElementById('userName');
+        if (userNameElement) {
+            userNameElement.textContent = '👤 Тестовый режим';
+        }
+    }
+    
+    // Сохраняем userId глобально для совместимости
+    window.userId = userId;
+    
+    // Загружаем данные пользователя
+    const userData = await loadUserData(userId);
+    if (userData) {
+        gameState.coins = userData.coins || gameState.coins || 0;
+        gameState.totalTaps = userData.taps || userData.totalTaps || gameState.totalTaps || 0;
+        gameState.coinsPerClick = userData.perClick || userData.coinsPerClick || gameState.coinsPerClick || 1;
+        gameState.referralsCount = userData.referralsCount || gameState.referralsCount || 0;
+        
+        // Загружаем дополнительные данные, если они есть
+        if (userData.referrals && Array.isArray(userData.referrals)) {
+            gameState.referrals = userData.referrals;
+        }
+        if (userData.referralBonus !== undefined) {
+            gameState.referralBonus = userData.referralBonus;
+        }
+        if (userData.purchasedUpgrades && Array.isArray(userData.purchasedUpgrades)) {
+            gameState.purchasedUpgrades = userData.purchasedUpgrades;
+        }
+    }
+    
+    // Обновляем UI
+    updateUI();
+    
+    console.log('✅ Приложение инициализировано, userId:', userId);
+    return userId;
 }
 
 /* ============================================
