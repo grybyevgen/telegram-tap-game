@@ -255,6 +255,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     showLoading('Инициализация...');
     
     try {
+        // ВАЖНО: Устанавливаем userId в самом начале
+        // Загружаем сохраненный userId из localStorage сначала
+        const savedUserId = localStorage.getItem(STORAGE_KEYS.USER_ID);
+        if (savedUserId && !gameState.userId) {
+            try {
+                gameState.userId = parseInt(savedUserId) || savedUserId;
+            } catch (e) {
+                gameState.userId = savedUserId;
+            }
+        }
+        
         // Проверка онлайн/оффлайн статуса
         setupOfflineDetection();
         
@@ -264,6 +275,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Дополнительная проверка Telegram WebApp
         if (!window.Telegram?.WebApp) {
             console.warn('⚠️ Telegram WebApp недоступен при инициализации');
+            // Убеждаемся что userId установлен для тестового режима
+            if (!gameState.userId) {
+                createTestUser();
+            }
             // Показываем сообщение для локального тестирования
             const userNameElement = document.getElementById('userName');
             if (userNameElement) {
@@ -283,9 +298,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         initTelegram();
         
+        // Убеждаемся что userId установлен после initTelegram
+        if (!gameState.userId) {
+            console.warn('⚠️ userId не установлен после initTelegram, создаем тестового пользователя');
+            createTestUser();
+        }
+        
         // Инициализация Firebase (если доступен)
         updateLoadingText('Подключение к Firebase...');
-        await initFirebaseIfAvailable();
+        try {
+            await initFirebaseIfAvailable();
+        } catch (error) {
+            console.warn('⚠️ Ошибка инициализации Firebase (продолжаем работу):', error);
+        }
         
         // Загрузка сохраненного прогресса
         updateLoadingText('Загрузка прогресса...');
@@ -293,47 +318,95 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Обработка реферального кода из URL (до генерации своего кода)
         updateLoadingText('Проверка реферальных ссылок...');
-        await checkReferralFromURL();
+        try {
+            await checkReferralFromURL();
+        } catch (error) {
+            console.warn('⚠️ Ошибка проверки реферального кода (продолжаем работу):', error);
+        }
         
         // Генерация/загрузка реферального кода пользователя
         updateLoadingText('Генерация реферального кода...');
-        await ensureReferralCode();
+        try {
+            await ensureReferralCode();
+        } catch (error) {
+            console.warn('⚠️ Ошибка генерации реферального кода (продолжаем работу):', error);
+        }
         
         // Загрузка данных из Firebase (если доступен)
         updateLoadingText('Синхронизация данных...');
-        await loadDataFromFirebase();
+        try {
+            await loadDataFromFirebase();
+        } catch (error) {
+            console.warn('⚠️ Ошибка загрузки данных из Firebase (продолжаем работу):', error);
+        }
         
         // Настройка обработчиков событий
         updateLoadingText('Настройка интерфейса...');
         setupEventListeners();
         
         // Генерация реферальной ссылки
-        generateReferralLink();
+        try {
+            generateReferralLink();
+        } catch (error) {
+            console.warn('⚠️ Ошибка генерации реферальной ссылки:', error);
+        }
         
         // Инициализация системы улучшений
-        initUpgrades();
+        try {
+            initUpgrades();
+        } catch (error) {
+            console.warn('⚠️ Ошибка инициализации улучшений:', error);
+        }
         
         // Инициализация системы достижений
-        initAchievements();
+        try {
+            initAchievements();
+        } catch (error) {
+            console.warn('⚠️ Ошибка инициализации достижений:', error);
+        }
         
         // Инициализация ежедневного бонуса
-        initDailyBonus();
+        try {
+            initDailyBonus();
+        } catch (error) {
+            console.warn('⚠️ Ошибка инициализации ежедневного бонуса:', error);
+        }
         
         // Проверка достижений
-        checkAchievements();
+        try {
+            checkAchievements();
+        } catch (error) {
+            console.warn('⚠️ Ошибка проверки достижений:', error);
+        }
         
         // Проверка обновлений
-        checkForUpdates();
+        try {
+            checkForUpdates();
+        } catch (error) {
+            console.warn('⚠️ Ошибка проверки обновлений:', error);
+        }
         
         // Регистрация Service Worker для PWA
-        registerServiceWorker();
+        try {
+            registerServiceWorker();
+        } catch (error) {
+            console.warn('⚠️ Ошибка регистрации Service Worker:', error);
+        }
         
         // Обновление интерфейса
         updateLoadingText('Финальная настройка...');
-        updateUI();
+        try {
+            updateUI();
+        } catch (error) {
+            console.warn('⚠️ Ошибка обновления UI:', error);
+        }
         
         // Загрузка истории рефералов
-        await loadReferralHistory();
+        try {
+            await loadReferralHistory();
+        } catch (error) {
+            console.warn('⚠️ Ошибка загрузки истории рефералов (продолжаем работу):', error);
+        }
         
         // Отменяем таймаут, так как инициализация завершена успешно
         clearTimeout(initTimeout);
@@ -342,7 +415,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => {
             hideLoading();
             // Показываем приветственное уведомление (только первый раз)
-            showWelcomeNotification();
+            try {
+                showWelcomeNotification();
+            } catch (error) {
+                console.warn('⚠️ Ошибка показа приветственного уведомления:', error);
+            }
         }, 500);
         
         console.log('✅ Игра успешно инициализирована');
@@ -354,7 +431,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('❌ Ошибка инициализации:', error);
         console.error('❌ Стек ошибки:', error.stack);
         hideLoading();
-        showError('Ошибка инициализации', error.message || 'Неизвестная ошибка. Пожалуйста, обновите страницу.');
+        
+        // Показываем ошибку, но не блокируем игру полностью
+        try {
+            showError('Ошибка инициализации', error.message || 'Неизвестная ошибка. Пожалуйста, обновите страницу.');
+        } catch (e) {
+            console.error('❌ Ошибка показа ошибки:', e);
+        }
+        
+        // Убеждаемся что игра все равно может работать
+        try {
+            updateUI();
+        } catch (e) {
+            console.error('❌ Ошибка обновления UI после ошибки:', e);
+        }
     }
 });
 
@@ -380,17 +470,25 @@ function showLoading(text = 'Загрузка...') {
 }
 
 function hideLoading() {
+    console.log('🔄 Скрытие экрана загрузки...');
     const loadingScreen = document.getElementById('loadingScreen');
     const appContainer = document.getElementById('appContainer');
     
     if (loadingScreen) {
         loadingScreen.classList.add('hidden');
+        // Дополнительно скрываем через style для гарантии
+        loadingScreen.style.display = 'none';
+        console.log('✅ Экран загрузки скрыт');
+    } else {
+        console.warn('⚠️ Элемент loadingScreen не найден');
     }
     
     if (appContainer) {
-        setTimeout(() => {
-            appContainer.style.opacity = '1';
-        }, 300);
+        appContainer.style.opacity = '1';
+        // app-container уже имеет display: flex в CSS, не нужно менять
+        console.log('✅ Контейнер приложения показан');
+    } else {
+        console.warn('⚠️ Элемент appContainer не найден');
     }
 }
 
@@ -632,10 +730,33 @@ function getUserDataFromTelegram() {
 function createTestUser() {
     console.log('🧪 Создание тестового пользователя...');
     
-    const testUserId = Date.now();
-    gameState.userId = testUserId;
+    // Используем сохраненный userId если есть
+    const savedUserId = localStorage.getItem(STORAGE_KEYS.USER_ID);
+    if (savedUserId && !gameState.userId) {
+        try {
+            gameState.userId = parseInt(savedUserId) || savedUserId;
+        } catch (e) {
+            gameState.userId = savedUserId;
+        }
+    }
+    
+    // Если userId все еще не установлен, создаем новый
+    if (!gameState.userId) {
+        gameState.userId = 'local_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+    }
+    
     gameState.userName = 'Тестовый игрок';
-    gameState.referralCode = generateReferralCode(testUserId);
+    
+    // Сохраняем userId в localStorage
+    localStorage.setItem(STORAGE_KEYS.USER_ID, gameState.userId.toString());
+    
+    // Генерируем код только если его нет
+    if (!gameState.referralCode) {
+        gameState.referralCode = generateReferralCode(gameState.userId);
+    }
+    
+    // Сохраняем состояние
+    saveGameState();
     
     console.log('✅ Тестовый пользователь создан:', {
         id: gameState.userId,
@@ -702,47 +823,68 @@ function validateReferralCode(code) {
 async function ensureReferralCode() {
     console.log('🔍 Проверка реферального кода пользователя...');
     
-    // Если код уже есть, проверяем его валидность
-    if (gameState.referralCode) {
-        const validation = validateReferralCode(gameState.referralCode);
-        if (!validation.valid && !gameState.referralCode.startsWith('TAP')) {
-            console.log('⚠️ Старый формат кода, генерируем новый');
-            gameState.referralCode = null;
+    try {
+        // Убеждаемся что userId установлен
+        if (!gameState.userId) {
+            console.warn('⚠️ userId не установлен в ensureReferralCode, создаем тестового пользователя');
+            createTestUser();
+        }
+        
+        // Если код уже есть, проверяем его валидность
+        if (gameState.referralCode && typeof gameState.referralCode === 'string') {
+            const validation = validateReferralCode(gameState.referralCode);
+            if (!validation.valid && gameState.referralCode.startsWith && !gameState.referralCode.startsWith('TAP')) {
+                console.log('⚠️ Старый формат кода, генерируем новый');
+                gameState.referralCode = null;
+            } else if (validation.valid) {
+                console.log('✅ Реферальный код уже существует:', gameState.referralCode);
+                return;
+            }
+        }
+        
+        // Генерация нового кода
+        if (gameState.userId) {
+            gameState.referralCode = generateReferralCode(gameState.userId);
         } else {
-            console.log('✅ Реферальный код уже существует:', gameState.referralCode);
-            return;
+            const tempUserId = Date.now();
+            gameState.referralCode = generateReferralCode(tempUserId);
         }
-    }
-    
-    // Генерация нового кода
-    if (gameState.userId) {
-        gameState.referralCode = generateReferralCode(gameState.userId);
-    } else {
-        const tempUserId = Date.now();
-        gameState.referralCode = generateReferralCode(tempUserId);
-    }
-    
-    // Сохранение кода в Firebase (если доступен)
-    if (window.FirebaseService && window.FirebaseService.isInitialized()) {
-        try {
-            await window.FirebaseService.saveReferralCode(
-                gameState.userId || Date.now(),
-                gameState.referralCode
-            );
-        } catch (error) {
-            console.warn('⚠️ Не удалось сохранить код в Firebase:', error);
+        
+        // Сохранение кода в Firebase (если доступен)
+        if (window.FirebaseService && window.FirebaseService.isInitialized()) {
+            try {
+                await window.FirebaseService.saveReferralCode(
+                    gameState.userId || Date.now(),
+                    gameState.referralCode
+                );
+            } catch (error) {
+                console.warn('⚠️ Не удалось сохранить код в Firebase:', error);
+            }
         }
+        
+        // Сохранение в localStorage
+        saveGameState();
+        
+        // Синхронизация с Firebase
+        if (window.FirebaseService && window.FirebaseService.isInitialized() && gameState.userId) {
+            try {
+                syncGameStateToFirebase();
+            } catch (error) {
+                console.warn('⚠️ Ошибка синхронизации с Firebase:', error);
+            }
+        }
+        
+        console.log('✅ Реферальный код создан и сохранен:', gameState.referralCode);
+    } catch (error) {
+        console.error('❌ Ошибка в ensureReferralCode:', error);
+        // Создаем код в любом случае
+        if (!gameState.referralCode) {
+            const tempUserId = gameState.userId || Date.now();
+            gameState.referralCode = generateReferralCode(tempUserId);
+            saveGameState();
+        }
+        throw error;
     }
-    
-    // Сохранение в localStorage
-    saveGameState();
-    
-    // Синхронизация с Firebase
-    if (window.FirebaseService && window.FirebaseService.isInitialized() && gameState.userId) {
-        syncGameStateToFirebase();
-    }
-    
-    console.log('✅ Реферальный код создан и сохранен:', gameState.referralCode);
 }
 
 /* ============================================
@@ -1481,24 +1623,23 @@ function updateStats() {
 async function initFirebaseIfAvailable() {
     if (window.FirebaseService) {
         try {
-            await window.FirebaseService.init();
+            const result = await window.FirebaseService.init();
             const isInitialized = window.FirebaseService.isInitialized();
             
-            if (isInitialized) {
+            if (isInitialized && result) {
                 console.log('✅ Firebase инициализирован');
                 appSettings.offlineMode = false;
             } else {
-                throw new Error('Firebase не удалось инициализировать');
+                // Firebase не инициализирован, но это не критично
+                console.warn('⚠️ Firebase не удалось инициализировать, работаем в оффлайн режиме');
+                appSettings.offlineMode = true;
             }
         } catch (error) {
             console.warn('⚠️ Firebase недоступен, работаем только с localStorage:', error);
             appSettings.offlineMode = true;
             
-            // Показываем уведомление только если это не первый запуск
-            const savedVersion = localStorage.getItem('appVersion');
-            if (savedVersion) {
-                showNotification('📴', 'Оффлайн режим', 'Firebase недоступен. Данные сохраняются локально.', 'warning', 4000);
-            }
+            // НЕ показываем уведомление, чтобы не блокировать инициализацию
+            // Уведомление может помешать при первом запуске
         }
     } else {
         console.log('ℹ️ Firebase Service не загружен, работаем только с localStorage');

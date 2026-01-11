@@ -82,27 +82,21 @@ async function initFirebase() {
             return null;
         }
 
-        // Вариант 1: Если Firebase уже загружен через CDN или модули
-        if (typeof window.firebase !== 'undefined' && window.firebase.initializeApp) {
-            // Старая версия Firebase через CDN
-            firebaseApp = window.firebase.initializeApp(firebaseConfig);
-            firebaseDb = firebaseApp.firestore();
-            firebaseAuth = firebaseApp.auth();
-        } else {
-            // Вариант 2: Динамический импорт модулей (для современных браузеров)
-            try {
-                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
-                const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-                const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+        // Используем динамический импорт модулей Firebase v10+
+        // Модули Firebase v10 не создают глобальный объект window.firebase
+        try {
+            const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+            const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+            const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
 
-                firebaseApp = initializeApp(firebaseConfig);
-                firebaseDb = getFirestore(firebaseApp);
-                firebaseAuth = getAuth(firebaseApp);
-            } catch (importError) {
-                console.error('❌ Ошибка загрузки Firebase модулей:', importError);
-                console.warn('💡 Подключите Firebase через CDN в index.html или используйте сборщик (Vite/Webpack)');
-                return null;
-            }
+            firebaseApp = initializeApp(firebaseConfig);
+            firebaseDb = getFirestore(firebaseApp);
+            firebaseAuth = getAuth(firebaseApp);
+        } catch (importError) {
+            console.error('❌ Ошибка загрузки Firebase модулей:', importError);
+            console.warn('💡 Проверьте подключение к интернету и доступность Firebase CDN');
+            // Не блокируем инициализацию, просто возвращаем null
+            return null;
         }
 
         firebaseInitialized = true;
