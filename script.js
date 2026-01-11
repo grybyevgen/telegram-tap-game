@@ -222,8 +222,34 @@ const STORAGE_KEYS = {
 /* ============================================
    Инициализация при загрузке страницы
    ============================================ */
+
+// В начале script.js, после инициализации Telegram
+console.log('Telegram:', window.Telegram);
+console.log('WebApp:', window.Telegram?.WebApp);
+
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Инициализация игры...');
+    
+    // Таймаут для гарантированного завершения загрузки (10 секунд)
+    const initTimeout = setTimeout(() => {
+        console.warn('⚠️ Инициализация заняла слишком много времени, принудительно скрываем загрузку');
+        try {
+            hideLoading();
+            // Показываем простое сообщение в консоли
+            console.error('❌ Инициализация не завершилась за отведенное время');
+        } catch (e) {
+            console.error('❌ Ошибка при принудительном скрытии загрузки:', e);
+            // Принудительно скрываем loading screen
+            const loadingScreen = document.getElementById('loadingScreen');
+            if (loadingScreen) {
+                loadingScreen.style.display = 'none';
+            }
+            const appContainer = document.getElementById('appContainer');
+            if (appContainer) {
+                appContainer.style.opacity = '1';
+            }
+        }
+    }, 10000);
     
     // Показываем loading screen
     showLoading('Инициализация...');
@@ -234,6 +260,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Инициализация Telegram Web App
         updateLoadingText('Загрузка Telegram SDK...');
+        
+        // Дополнительная проверка Telegram WebApp
+        if (!window.Telegram?.WebApp) {
+            console.warn('⚠️ Telegram WebApp недоступен при инициализации');
+            // Показываем сообщение для локального тестирования
+            const userNameElement = document.getElementById('userName');
+            if (userNameElement) {
+                userNameElement.textContent = '⚠️ Тестовый режим';
+            }
+            // Добавляем сообщение в body для тестового режима (только если еще нет)
+            if (!document.querySelector('.test-mode-notice')) {
+                const testModeDiv = document.createElement('div');
+                testModeDiv.className = 'test-mode-notice';
+                testModeDiv.style.cssText = 'background: #ffeb3b; padding: 10px; margin: 10px; border-radius: 5px; position: fixed; top: 80px; left: 10px; right: 10px; z-index: 9999;';
+                testModeDiv.innerHTML = '<strong>Тестовый режим</strong><br>В Telegram боте будет работать полноценно';
+                document.body.appendChild(testModeDiv);
+            }
+        } else {
+            console.log('✅ Telegram WebApp найден при инициализации');
+        }
+        
         initTelegram();
         
         // Инициализация Firebase (если доступен)
@@ -288,6 +335,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Загрузка истории рефералов
         await loadReferralHistory();
         
+        // Отменяем таймаут, так как инициализация завершена успешно
+        clearTimeout(initTimeout);
+        
         // Скрываем loading screen
         setTimeout(() => {
             hideLoading();
@@ -298,7 +348,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('✅ Игра успешно инициализирована');
         console.log('📊 Текущее состояние:', gameState);
     } catch (error) {
+        // Отменяем таймаут при ошибке
+        clearTimeout(initTimeout);
+        
         console.error('❌ Ошибка инициализации:', error);
+        console.error('❌ Стек ошибки:', error.stack);
         hideLoading();
         showError('Ошибка инициализации', error.message || 'Неизвестная ошибка. Пожалуйста, обновите страницу.');
     }
@@ -508,8 +562,7 @@ function initTelegram() {
         // Получение данных пользователя
         getUserDataFromTelegram();
         
-        // Обработка реферального кода из URL
-        checkReferralFromURL();
+        // Обработка реферального кода из URL удалена отсюда - вызывается отдельно в DOMContentLoaded
         
         // Настройка кнопки "Назад"
         tg.BackButton.onClick(() => {
